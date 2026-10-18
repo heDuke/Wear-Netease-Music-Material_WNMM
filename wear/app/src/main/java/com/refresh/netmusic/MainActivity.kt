@@ -48,9 +48,9 @@ private fun NetMusicNav() {
 
     NavDisplay(
         backStack = backStack,
-        sceneStrategy = strategy,
-        entryProvider = { key ->
-            when (val route = key as Route) {
+        sceneStrategies = listOf(strategy),
+        entryProvider = { key: Route ->
+            when (val route = key) {
                 Route.Login -> NavEntry(route) {
                     LoginScreen(onLoggedIn = {
                         backStack.clear()

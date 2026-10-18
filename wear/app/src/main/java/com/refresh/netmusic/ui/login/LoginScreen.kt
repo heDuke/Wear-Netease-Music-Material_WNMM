@@ -3,6 +3,7 @@ package com.refresh.netmusic.ui.login
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -12,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
+import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.EdgeButton
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
@@ -28,27 +31,37 @@ fun LoginScreen(
     LaunchedEffect(state.loggedIn) {
         if (state.loggedIn) onLoggedIn()
     }
+    val columnState = rememberTransformingLazyColumnState()
     ScreenScaffold(
+        scrollState = columnState,
         edgeButton = {
             EdgeButton(onClick = vm::refreshQr) {
                 Text("刷新")
             }
         },
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
+    ) { contentPadding ->
+        TransformingLazyColumn(
+            state = columnState,
+            contentPadding = contentPadding,
+            modifier = Modifier.fillMaxSize(),
         ) {
-            if (state.qrurl.isNotBlank()) {
-                WifiShareQr(content = state.qrurl, moduleColor = MaterialTheme.colorScheme.primary)
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    if (state.qrurl.isNotBlank()) {
+                        WifiShareQr(content = state.qrurl, moduleColor = MaterialTheme.colorScheme.primary)
+                    }
+                    Text(
+                        text = state.statusText,
+                        style = MaterialTheme.typography.titleMedium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
             }
-            Text(
-                text = state.statusText,
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 8.dp),
-            )
         }
     }
 }

@@ -1,0 +1,51 @@
+name: Android
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: wear
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+      - name: Decode keystore
+        if: ${{ secrets.SIGNING_KEYSTORE_BASE64 != '' }}
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          echo "$SIGNING_KEYSTORE_BASE64" | base64 -d > "$GITHUB_WORKSPACE/release.jks"
+          echo "SIGNING_STORE_FILE=$GITHUB_WORKSPACE/release.jks" >> "$GITHUB_ENV"
+          echo "SIGNING_STORE_PASSWORD=${{ secrets.SIGNING_STORE_PASSWORD }}" >> "$GITHUB_ENV"
+          echo "SIGNING_KEY_ALIAS=${{ secrets.SIGNING_KEY_ALIAS }}" >> "$GITHUB_ENV"
+          echo "SIGNING_KEY_PASSWORD=${{ secrets.SIGNING_KEY_PASSWORD }}" >> "$GITHUB_ENV"
+      - name: Test and assemble
+        run: ./gradlew :ncm:test :app:assembleDebug :app:assembleRelease --stacktrace --no-daemon
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: NetMusic-apks
+          path: |
+            wear/app/build/outputs/apk/debug/*.apk
+            wear/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+      - name: GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            wear/app/build/outputs/apk/debug/*.apk
+            wear/app/build/outputs/apk/release/*.apk

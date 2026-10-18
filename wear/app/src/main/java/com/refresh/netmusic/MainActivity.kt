@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.navigation3.runtime.NavEntry
+import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import androidx.wear.compose.material3.AppScaffold
@@ -39,7 +40,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun NetMusicNav() {
     val backStack = rememberNavBackStack(Route.Login)
-    val strategy = rememberSwipeDismissableSceneStrategy<Route>()
+    val strategy = rememberSwipeDismissableSceneStrategy<NavKey>()
 
     fun play(songs: List<Song>, index: Int) {
         PlaybackService.instance?.playSongs(songs, index)
@@ -49,8 +50,8 @@ private fun NetMusicNav() {
     NavDisplay(
         backStack = backStack,
         sceneStrategies = listOf(strategy),
-        entryProvider = { key: Route ->
-            when (val route = key) {
+        entryProvider = { key ->
+            when (val route = key as Route) {
                 Route.Login -> NavEntry(route) {
                     LoginScreen(onLoggedIn = {
                         backStack.clear()

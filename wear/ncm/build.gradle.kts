@@ -5,7 +5,9 @@ plugins {
 
 android {
     namespace = "com.refresh.netmusic.ncm"
-    compileSdk = 36
+    compileSdk {
+        version = release(37)
+    }
     defaultConfig {
         minSdk = 30
         consumerProguardFiles("consumer-rules.pro")

@@ -25,7 +25,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 
 /**
- * Kotlin port of api-enhanced `module/*.js` used by Wear v1.
+ * Kotlin port of api-enhanced module JS files used by Wear v1.
  * Function names follow the js file names in camelCase.
  */
 class NeteaseApi(val request: NeteaseRequest = NeteaseRequest()) {

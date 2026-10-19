@@ -13,6 +13,7 @@ data class LoginUiState(
     val qrurl: String = "",
     val statusText: String = "正在生成二维码",
     val loggedIn: Boolean = false,
+    val waitingConfirm: Boolean = false,
     val error: String? = null,
 )
 
@@ -47,11 +48,18 @@ class LoginViewModel(
                     delay(2000)
                     val check = api.loginQrCheck(key)
                     when (check.code) {
-                        801 -> _state.value = _state.value.copy(statusText = "用网易云扫描")
-                        802 -> _state.value = _state.value.copy(statusText = "已扫码，请确认")
+                        801 -> _state.value = _state.value.copy(statusText = "用网易云扫描", waitingConfirm = false)
+                        802 -> _state.value = _state.value.copy(statusText = "已扫码，请确认", waitingConfirm = true)
                         803 -> {
                             session.saveCookies(api.request.cookies.asHeader())
-                            _state.value = _state.value.copy(loggedIn = true, statusText = "登录成功")
+                            runCatching { api.loginStatus() }.onSuccess { profile ->
+                                profile?.let { session.saveUid(it.userId) }
+                            }
+                            _state.value = _state.value.copy(
+                                loggedIn = true,
+                                waitingConfirm = false,
+                                statusText = "登录成功",
+                            )
                             break
                         }
                         800 -> {

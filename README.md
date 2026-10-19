@@ -3,9 +3,10 @@
 Wear OS 网易云客户端。Kotlin 原生实现 [api-enhanced](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced) 的 weapi/eapi，手表直连网易云，不跑 Node。
 
 - ApplicationId: `com.refresh.netmusic`
-- UI: Wear Compose Material 3 + Navigation 3
+- UI: Wear Compose Material 3 1.8 + Horologist media/audio
 - 网络: Ktor CIO
 - 播放: Media3（允许手表扬声器）
+- 会话: Tink AES-256-GCM（Keystore）加密 Cookie / uid
 
 ## 工具链（当前最新）
 
@@ -14,9 +15,11 @@ Wear OS 网易云客户端。Kotlin 原生实现 [api-enhanced](https://github.c
 | Gradle | 9.8.1 |
 | Android Gradle Plugin | 9.4.1 |
 | Kotlin | 2.4.21 |
-| Wear Compose | 1.7.1 |
+| Wear Compose | 1.8.0-alpha01 |
 | Compose BOM | 2026.09.00 |
-| Navigation 3 | 1.2.0 |
+| Navigation 3 | 1.3.0-alpha02 |
+| Horologist | 0.8.4-alpha |
+| Tink | 1.24.0 |
 | Lifecycle | 2.11.0 |
 | Ktor | 3.6.0 |
 | Koin | 4.2.2 |

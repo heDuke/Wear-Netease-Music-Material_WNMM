@@ -28,6 +28,6 @@ val appModule = module {
     viewModel { LibraryViewModel(get(), get()) }
     viewModel { SearchViewModel(get()) }
     viewModel { PlaylistViewModel(get()) }
-    viewModel { PlayerViewModel(get()) }
+    viewModel { PlayerViewModel(get(), get()) }
     viewModel { SettingsViewModel(get(), get()) }
 }

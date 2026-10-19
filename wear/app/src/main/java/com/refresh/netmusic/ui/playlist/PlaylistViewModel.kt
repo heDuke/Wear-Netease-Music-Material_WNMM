@@ -8,13 +8,22 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+data class PlaylistUiState(
+    val songs: List<Song> = emptyList(),
+    val loading: Boolean = true,
+    val error: String? = null,
+)
+
 class PlaylistViewModel(private val api: NeteaseApi) : ViewModel() {
-    private val _songs = MutableStateFlow<List<Song>>(emptyList())
-    val songs = _songs.asStateFlow()
+    private val _state = MutableStateFlow(PlaylistUiState())
+    val state = _state.asStateFlow()
 
     fun load(id: Long) {
         viewModelScope.launch {
-            _songs.value = runCatching { api.playlistTrackAll(id) }.getOrDefault(emptyList())
+            _state.value = _state.value.copy(loading = true, error = null)
+            runCatching { api.playlistTrackAll(id) }
+                .onSuccess { _state.value = PlaylistUiState(songs = it, loading = false) }
+                .onFailure { _state.value = _state.value.copy(loading = false, error = it.message) }
         }
     }
 }

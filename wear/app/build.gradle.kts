@@ -87,11 +87,29 @@ dependencies {
     implementation(libs.serialization.json)
     implementation(libs.datastore.preferences)
     implementation(libs.zxing.core)
+    implementation(libs.compose.material.icons.core)
+    implementation(libs.compose.material.icons.extended)
     implementation(libs.wear.tiles)
     implementation(libs.wear.protolayout)
+    implementation(libs.wear.protolayout.material3)
+    implementation(libs.wear.protolayout.expression)
     implementation(libs.wear.ongoing)
+    implementation(libs.wear.input)
+    implementation(libs.horologist.media.ui.material3)
+    implementation(libs.horologist.audio.ui.material3)
+    implementation(libs.horologist.audio.ui.model)
+    implementation(libs.tink.android)
+    implementation(libs.palette.ktx)
     implementation(libs.guava)
-    implementation(libs.horologist.compose.layout)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.wear.compose.ui.tooling)
+}
+
+configurations.configureEach {
+    resolutionStrategy {
+        force("androidx.wear.compose:compose-material3:${libs.versions.wearCompose.get()}")
+        force("androidx.wear.compose:compose-foundation:${libs.versions.wearCompose.get()}")
+        force("androidx.navigation3:navigation3-runtime:${libs.versions.navigation3.get()}")
+        force("androidx.navigation3:navigation3-ui:${libs.versions.navigation3.get()}")
+    }
 }

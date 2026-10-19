@@ -2,8 +2,8 @@
 agp = "9.4.1"
 kotlin = "2.4.21"
 composeBom = "2026.09.00"
-wearCompose = "1.7.1"
-navigation3 = "1.2.0"
+wearCompose = "1.8.0-alpha01"
+navigation3 = "1.3.0-alpha02"
 activityCompose = "1.13.0"
 lifecycle = "2.11.0"
 koin = "4.2.2"
@@ -19,8 +19,11 @@ coreKtx = "1.19.1"
 wearTiles = "1.6.2"
 protoLayout = "1.4.2"
 wearOngoing = "1.1.0"
+wearInput = "1.2.0"
 horologist = "0.8.4-alpha"
 guava = "33.5.0-android"
+tink = "1.24.0"
+palette = "1.0.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -30,6 +33,8 @@ compose-ui = { module = "androidx.compose.ui:ui" }
 compose-foundation = { module = "androidx.compose.foundation:foundation" }
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+compose-material-icons-core = { module = "androidx.compose.material:material-icons-core" }
+compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 wear-compose-material3 = { module = "androidx.wear.compose:compose-material3", version.ref = "wearCompose" }
 wear-compose-foundation = { module = "androidx.wear.compose:compose-foundation", version.ref = "wearCompose" }
 wear-compose-navigation3 = { module = "androidx.wear.compose:compose-navigation3", version.ref = "wearCompose" }
@@ -56,8 +61,15 @@ datastore-preferences = { module = "androidx.datastore:datastore-preferences", v
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 wear-tiles = { module = "androidx.wear.tiles:tiles", version.ref = "wearTiles" }
 wear-protolayout = { module = "androidx.wear.protolayout:protolayout", version.ref = "protoLayout" }
+wear-protolayout-material3 = { module = "androidx.wear.protolayout:protolayout-material3", version.ref = "protoLayout" }
+wear-protolayout-expression = { module = "androidx.wear.protolayout:protolayout-expression", version.ref = "protoLayout" }
 wear-ongoing = { module = "androidx.wear:wear-ongoing", version.ref = "wearOngoing" }
-horologist-compose-layout = { module = "com.google.android.horologist:horologist-compose-layout", version.ref = "horologist" }
+wear-input = { module = "androidx.wear:wear-input", version.ref = "wearInput" }
+horologist-media-ui-material3 = { module = "com.google.android.horologist:horologist-media-ui-material3", version.ref = "horologist" }
+horologist-audio-ui-material3 = { module = "com.google.android.horologist:horologist-audio-ui-material3", version.ref = "horologist" }
+horologist-audio-ui-model = { module = "com.google.android.horologist:horologist-audio-ui-model", version.ref = "horologist" }
+tink-android = { module = "com.google.crypto.tink:tink-android", version.ref = "tink" }
+palette-ktx = { module = "androidx.palette:palette-ktx", version.ref = "palette" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 junit = { module = "junit:junit", version.ref = "junit" }
 

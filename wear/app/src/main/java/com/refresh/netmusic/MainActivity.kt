@@ -44,7 +44,11 @@ private fun NetMusicNav() {
 
     fun play(songs: List<Song>, index: Int) {
         PlaybackService.instance?.playSongs(songs, index)
-        backStack.add(Route.Player)
+        if (backStack.lastOrNull() != Route.Player) backStack.add(Route.Player)
+    }
+
+    fun openPlayer() {
+        if (backStack.lastOrNull() != Route.Player) backStack.add(Route.Player)
     }
 
     NavDisplay(
@@ -64,6 +68,7 @@ private fun NetMusicNav() {
                         onPlaylist = { backStack.add(Route.Playlist(it.id, it.name)) },
                         onSearch = { backStack.add(Route.Search) },
                         onLibrary = { backStack.add(Route.Library) },
+                        onNowPlaying = ::openPlayer,
                     )
                 }
                 Route.Search -> NavEntry(route) {
@@ -73,6 +78,7 @@ private fun NetMusicNav() {
                     LibraryScreen(
                         onPlaylist = { backStack.add(Route.Playlist(it.id, it.name)) },
                         onSettings = { backStack.add(Route.Settings) },
+                        onNowPlaying = ::openPlayer,
                     )
                 }
                 Route.Settings -> NavEntry(route) {
@@ -82,7 +88,12 @@ private fun NetMusicNav() {
                     })
                 }
                 is Route.Playlist -> NavEntry(route) {
-                    PlaylistScreen(id = route.id, name = route.name, onPlay = ::play)
+                    PlaylistScreen(
+                        id = route.id,
+                        name = route.name,
+                        onPlay = ::play,
+                        onNowPlaying = ::openPlayer,
+                    )
                 }
                 Route.Player -> NavEntry(route) {
                     PlayerScreen()

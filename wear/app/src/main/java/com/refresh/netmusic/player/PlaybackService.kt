@@ -1,28 +1,38 @@
 package com.refresh.netmusic.player
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import androidx.core.app.NotificationCompat
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import androidx.wear.ongoing.OngoingActivity
+import androidx.wear.ongoing.Status
+import com.refresh.netmusic.MainActivity
+import com.refresh.netmusic.R
 import com.refresh.netmusic.data.SessionStore
 import com.refresh.netmusic.ncm.api.NeteaseApi
 import com.refresh.netmusic.ncm.model.Song
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.koin.android.ext.android.inject
+import java.io.IOException
 
 class PlaybackService : MediaSessionService() {
     private val api: NeteaseApi by inject()
     private val sessionStore: SessionStore by inject()
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var mediaSession: MediaSession? = null
     private var player: ExoPlayer? = null
 
@@ -34,7 +44,17 @@ class PlaybackService : MediaSessionService() {
                     NotificationChannel(CHANNEL, "NetMusic", NotificationManager.IMPORTANCE_LOW),
                 )
         }
+        val resolving = ResolvingDataSource.Factory(DefaultHttpDataSource.Factory()) { dataSpec ->
+            val uri = dataSpec.uri
+            if (uri.scheme != "ncm") return@Factory dataSpec
+            val id = uri.host?.toLongOrNull() ?: throw IOException("bad ncm uri")
+            val url = runBlocking(Dispatchers.IO) {
+                api.songUrlV1(id, sessionStore.quality()).url
+            } ?: throw IOException("empty url")
+            dataSpec.buildUpon().setUri(Uri.parse(url)).build()
+        }
         val exo = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(resolving))
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
@@ -47,6 +67,12 @@ class PlaybackService : MediaSessionService() {
         player = exo
         PlayerHolder.player = exo
         instance = this
+        exo.addListener(object : Player.Listener {
+            override fun onEvents(player: Player, events: Player.Events) {
+                PlayerHolder.updateFrom(player)
+                applyOngoing(player)
+            }
+        })
         mediaSession = MediaSession.Builder(this, exo).build()
     }
 
@@ -62,43 +88,50 @@ class PlaybackService : MediaSessionService() {
                     androidx.media3.common.MediaMetadata.Builder()
                         .setTitle(song.name)
                         .setArtist(song.artists)
-                        .setArtworkUri(android.net.Uri.parse(song.coverUrl.ifBlank { "https://p2.music.126.net" }))
+                        .setArtworkUri(song.coverUrl.takeIf { it.isNotBlank() }?.let(Uri::parse))
                         .build(),
                 )
                 .build()
         }
-        scope.launch {
-            val start = songs.getOrNull(startIndex) ?: return@launch
-            val url = api.songUrlV1(start.id, sessionStore.quality()).url ?: return@launch
-            val realItems = items.mapIndexed { index, item ->
-                if (index == startIndex) item.buildUpon().setUri(url).build() else item
-            }
-            exo.setMediaItems(realItems, startIndex, 0)
-            exo.prepare()
-            exo.play()
-            exo.addListener(object : Player.Listener {
-                override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                    val id = mediaItem?.mediaId?.toLongOrNull() ?: return
-                    scope.launch { resolveIfNeeded(id) }
-                }
-            })
-        }
+        exo.setMediaItems(items, startIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0)), 0)
+        exo.prepare()
+        exo.play()
+        PlayerHolder.updateFrom(exo)
     }
 
-    private suspend fun resolveIfNeeded(id: Long) {
-        val exo = player ?: return
-        val current = exo.currentMediaItem ?: return
-        val uri = current.localConfiguration?.uri?.toString().orEmpty()
-        if (uri.startsWith("http")) return
-        val url = api.songUrlV1(id, sessionStore.quality()).url ?: return
-        val idx = exo.currentMediaItemIndex
-        exo.replaceMediaItem(idx, current.buildUpon().setUri(url).build())
-        if (!exo.isPlaying) exo.play()
+    private fun applyOngoing(player: Player) {
+        val title = player.mediaMetadata.title?.toString() ?: return
+        val artist = player.mediaMetadata.artist?.toString().orEmpty()
+        if (!player.isPlaying && player.playbackState == Player.STATE_IDLE) return
+        val launch = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notification: Notification = NotificationCompat.Builder(this, CHANNEL)
+            .setSmallIcon(R.drawable.ic_stat_music)
+            .setContentTitle(title)
+            .setContentText(artist)
+            .setContentIntent(launch)
+            .setOngoing(player.isPlaying)
+            .setCategory(Notification.CATEGORY_TRANSPORT)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .build()
+        OngoingActivity.Builder(applicationContext, ONGOING_ID, notification)
+            .setAnimatedIcon(R.drawable.ic_stat_music)
+            .setStaticIcon(R.drawable.ic_stat_music)
+            .setTouchIntent(launch)
+            .setTitle(title)
+            .setStatus(Status.Builder().addTemplate(artist.ifBlank { "NetMusic" }).build())
+            .build()
+            .apply(applicationContext)
     }
 
     override fun onDestroy() {
         instance = null
         PlayerHolder.player = null
+        PlayerHolder.updateFrom(null)
         mediaSession?.run {
             player.release()
             release()
@@ -109,6 +142,7 @@ class PlaybackService : MediaSessionService() {
 
     companion object {
         const val CHANNEL = "netmusic_playback"
+        const val ONGOING_ID = 1001
         var instance: PlaybackService? = null
             private set
     }

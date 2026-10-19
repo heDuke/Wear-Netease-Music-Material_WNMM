@@ -1,6 +1,8 @@
 package com.refresh.netmusic.ui.components
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
@@ -19,6 +21,7 @@ import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.CircularProgressIndicator
 import androidx.wear.compose.material3.ListHeader
+import androidx.wear.compose.material3.PullToRefreshBox
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.SurfaceTransformation
 import androidx.wear.compose.material3.Text
@@ -26,6 +29,7 @@ import androidx.wear.compose.material3.TitleCard
 import androidx.wear.compose.material3.lazy.TransformationSpec
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
+import androidx.wear.compose.material3.rememberPullToRefreshState
 import coil3.compose.AsyncImage
 
 @Composable
@@ -33,7 +37,7 @@ fun WearListScreen(
     title: String,
     isRefreshing: Boolean = false,
     onRefresh: (() -> Unit)? = null,
-    edgeButton: (@Composable () -> Unit)? = null,
+    edgeButton: (@Composable BoxScope.() -> Unit)? = null,
     content: TransformingLazyColumnScope.(spec: TransformationSpec) -> Unit,
 ) {
     val columnState = rememberTransformingLazyColumnState()
@@ -41,8 +45,32 @@ fun WearListScreen(
     ScreenScaffold(
         scrollState = columnState,
         edgeButton = edgeButton,
-    ) { contentPadding ->
-        val list: @Composable () -> Unit = {
+    ) { contentPadding: PaddingValues ->
+        if (onRefresh != null) {
+            val refreshState = rememberPullToRefreshState()
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = onRefresh,
+                state = refreshState,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                TransformingLazyColumn(
+                    state = columnState,
+                    contentPadding = contentPadding,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    item {
+                        ListHeader(
+                            modifier = Modifier.fillMaxWidth().transformedHeight(this, spec),
+                            transformation = SurfaceTransformation(spec),
+                        ) {
+                            Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                    content(spec)
+                }
+            }
+        } else {
             TransformingLazyColumn(
                 state = columnState,
                 contentPadding = contentPadding,
@@ -58,17 +86,6 @@ fun WearListScreen(
                 }
                 content(spec)
             }
-        }
-        if (onRefresh != null) {
-            androidx.wear.compose.material3.PullToRefreshBox(
-                isRefreshing = isRefreshing,
-                onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                list()
-            }
-        } else {
-            list()
         }
     }
 }

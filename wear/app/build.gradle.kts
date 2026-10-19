@@ -57,6 +57,8 @@ android {
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        optIn.add("com.google.android.horologist.annotations.ExperimentalHorologistApi")
+        optIn.add("androidx.wear.compose.material3.ExperimentalWearMaterial3Api")
     }
 }
 
@@ -106,10 +108,12 @@ dependencies {
 }
 
 configurations.configureEach {
-    resolutionStrategy {
-        force("androidx.wear.compose:compose-material3:${libs.versions.wearCompose.get()}")
-        force("androidx.wear.compose:compose-foundation:${libs.versions.wearCompose.get()}")
-        force("androidx.navigation3:navigation3-runtime:${libs.versions.navigation3.get()}")
-        force("androidx.navigation3:navigation3-ui:${libs.versions.navigation3.get()}")
+    resolutionStrategy.eachDependency {
+        if (requested.group == "androidx.wear.compose") {
+            useVersion(libs.versions.wearCompose.get())
+        }
+        if (requested.group == "androidx.navigation3") {
+            useVersion(libs.versions.navigation3.get())
+        }
     }
 }

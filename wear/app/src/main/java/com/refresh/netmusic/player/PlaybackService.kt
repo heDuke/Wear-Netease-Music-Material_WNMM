@@ -1,6 +1,5 @@
 package com.refresh.netmusic.player
 
-import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -109,15 +108,14 @@ class PlaybackService : MediaSessionService() {
             Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val notification: Notification = NotificationCompat.Builder(this, CHANNEL)
+        val notification = NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_music)
             .setContentTitle(title)
             .setContentText(artist)
             .setContentIntent(launch)
             .setOngoing(player.isPlaying)
-            .setCategory(Notification.CATEGORY_TRANSPORT)
+            .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .build()
         OngoingActivity.Builder(applicationContext, ONGOING_ID, notification)
             .setAnimatedIcon(R.drawable.ic_stat_music)
             .setStaticIcon(R.drawable.ic_stat_music)

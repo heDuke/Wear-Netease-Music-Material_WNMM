@@ -19,8 +19,10 @@ import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.EdgeButton
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.OpenOnPhoneDialog
+import androidx.wear.compose.material3.OpenOnPhoneDialogDefaults
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
+import androidx.wear.compose.material3.openOnPhoneDialogCurvedText
 import com.refresh.netmusic.ui.qr.WifiShareQr
 import org.koin.androidx.compose.koinViewModel
 
@@ -65,5 +67,6 @@ fun LoginScreen(
     OpenOnPhoneDialog(
         visible = showOpenOnPhone,
         onDismissRequest = { showOpenOnPhone = false },
+        curvedText = { openOnPhoneDialogCurvedText(OpenOnPhoneDialogDefaults.curvedText) },
     )
 }

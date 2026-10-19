@@ -10,8 +10,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.wear.compose.material3.AlertDialog
+import androidx.wear.compose.material3.AlertDialogDefaults
 import androidx.wear.compose.material3.Button
-import androidx.wear.compose.material3.FilledTonalButton
 import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.RadioButton
 import androidx.wear.compose.material3.SurfaceTransformation
@@ -69,15 +69,15 @@ fun SettingsScreen(
         title = { Text("退出登录") },
         text = { Text("将清除加密保存的登录信息") },
         confirmButton = {
-            Button(
+            AlertDialogDefaults.ConfirmButton(
                 onClick = {
                     confirmLogout = false
                     vm.logout()
                 },
-            ) { Text("退出") }
+            )
         },
         dismissButton = {
-            FilledTonalButton(onClick = { confirmLogout = false }) { Text("取消") }
+            AlertDialogDefaults.DismissButton(onClick = { confirmLogout = false })
         },
     )
 }

@@ -67,6 +67,11 @@ fun LoginScreen(
     OpenOnPhoneDialog(
         visible = showOpenOnPhone,
         onDismissRequest = { showOpenOnPhone = false },
-        curvedText = { openOnPhoneDialogCurvedText(OpenOnPhoneDialogDefaults.curvedText) },
+        curvedText = {
+            openOnPhoneDialogCurvedText(
+                text = OpenOnPhoneDialogDefaults.text,
+                style = OpenOnPhoneDialogDefaults.curvedTextStyle,
+            )
+        },
     )
 }

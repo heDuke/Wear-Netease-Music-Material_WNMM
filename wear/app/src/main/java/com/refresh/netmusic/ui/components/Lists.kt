@@ -21,7 +21,6 @@ import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.CircularProgressIndicator
 import androidx.wear.compose.material3.ListHeader
-import androidx.wear.compose.material3.PullToRefreshBox
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.SurfaceTransformation
 import androidx.wear.compose.material3.Text
@@ -29,7 +28,6 @@ import androidx.wear.compose.material3.TitleCard
 import androidx.wear.compose.material3.lazy.TransformationSpec
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
-import androidx.wear.compose.material3.rememberPullToRefreshState
 import coil3.compose.AsyncImage
 
 @Composable
@@ -42,50 +40,40 @@ fun WearListScreen(
 ) {
     val columnState = rememberTransformingLazyColumnState()
     val spec = rememberTransformationSpec()
-    ScreenScaffold(
-        scrollState = columnState,
-        edgeButton = edgeButton,
-    ) { contentPadding: PaddingValues ->
-        if (onRefresh != null) {
-            val refreshState = rememberPullToRefreshState()
-            PullToRefreshBox(
-                isRefreshing = isRefreshing,
-                onRefresh = onRefresh,
-                state = refreshState,
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                TransformingLazyColumn(
-                    state = columnState,
-                    contentPadding = contentPadding,
-                    modifier = Modifier.fillMaxSize(),
+    val body: @Composable (PaddingValues) -> Unit = { contentPadding ->
+        TransformingLazyColumn(
+            state = columnState,
+            contentPadding = contentPadding,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            item {
+                ListHeader(
+                    modifier = Modifier.fillMaxWidth().transformedHeight(this, spec),
+                    transformation = SurfaceTransformation(spec),
                 ) {
-                    item {
-                        ListHeader(
-                            modifier = Modifier.fillMaxWidth().transformedHeight(this, spec),
-                            transformation = SurfaceTransformation(spec),
-                        ) {
-                            Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                    }
-                    content(spec)
+                    Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
-        } else {
-            TransformingLazyColumn(
-                state = columnState,
-                contentPadding = contentPadding,
-                modifier = Modifier.fillMaxSize(),
-            ) {
+            if (onRefresh != null) {
                 item {
-                    ListHeader(
+                    Button(
+                        onClick = onRefresh,
                         modifier = Modifier.fillMaxWidth().transformedHeight(this, spec),
                         transformation = SurfaceTransformation(spec),
-                    ) {
-                        Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
+                        label = { Text(if (isRefreshing) "刷新中" else "刷新") },
+                    )
                 }
-                content(spec)
             }
+            content(spec)
+        }
+    }
+    if (edgeButton != null) {
+        ScreenScaffold(scrollState = columnState, edgeButton = edgeButton) { padding ->
+            body(padding)
+        }
+    } else {
+        ScreenScaffold(scrollState = columnState) { padding ->
+            body(padding)
         }
     }
 }

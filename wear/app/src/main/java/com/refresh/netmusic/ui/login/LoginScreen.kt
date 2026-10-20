@@ -64,13 +64,15 @@ fun LoginScreen(
             )
         }
     }
+    val openOnPhoneText = OpenOnPhoneDialogDefaults.text
+    val openOnPhoneStyle = OpenOnPhoneDialogDefaults.curvedTextStyle
     OpenOnPhoneDialog(
         visible = showOpenOnPhone,
         onDismissRequest = { showOpenOnPhone = false },
         curvedText = {
             openOnPhoneDialogCurvedText(
-                text = OpenOnPhoneDialogDefaults.text,
-                style = OpenOnPhoneDialogDefaults.curvedTextStyle,
+                text = openOnPhoneText,
+                style = openOnPhoneStyle,
             )
         },
     )

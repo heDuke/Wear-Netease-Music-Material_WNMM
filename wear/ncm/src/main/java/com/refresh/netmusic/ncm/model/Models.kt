@@ -19,7 +19,10 @@ data class Song(
     val coverUrl: String,
     val durationMs: Long,
     val fee: Int = 0,
-)
+) {
+    val lineSubtitle: String
+        get() = listOf(artists, album).filter { it.isNotBlank() }.joinToString(" · ")
+}
 
 data class Playlist(
     val id: Long,
@@ -42,4 +45,12 @@ data class Comment(
     val timeMs: Long,
 )
 
-data class SongUrl(val id: Long, val url: String?, val level: String?, val trial: Boolean)
+data class SongUrl(
+    val id: Long,
+    val url: String?,
+    val level: String?,
+    val type: String? = null,
+    val trial: Boolean,
+    val code: Int = 200,
+    val message: String? = null,
+)

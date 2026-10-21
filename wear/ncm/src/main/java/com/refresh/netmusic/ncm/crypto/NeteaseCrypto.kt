@@ -51,6 +51,19 @@ object NeteaseCrypto {
         return aesEcbDecrypt(hexCipher, EAPI_KEY)
     }
 
+    /** Cover CDN path used when APIs omit `picUrl` and only return a numeric pic id. */
+    @OptIn(ExperimentalEncodingApi::class)
+    fun picUrl(id: String): String {
+        if (id.isBlank() || id == "0") return ""
+        val magic = "3go8&$8*3*3h0k(2)2"
+        val mixed = ByteArray(id.length) { i ->
+            (id[i].code xor magic[i % magic.length].code).toByte()
+        }
+        val digest = MessageDigest.getInstance("MD5").digest(mixed)
+        val encoded = Base64.encode(digest).replace('/', '_').replace('+', '-')
+        return "https://p1.music.126.net/$encoded/$id.jpg"
+    }
+
     fun randomSecretKey(): String {
         val chars = CharArray(16)
         for (i in chars.indices) {

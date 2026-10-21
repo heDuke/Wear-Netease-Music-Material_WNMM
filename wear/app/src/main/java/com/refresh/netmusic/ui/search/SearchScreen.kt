@@ -67,8 +67,8 @@ fun SearchScreen(
             state.results.forEachIndexed { index, song ->
                 item(key = "song-${song.id}") {
                     SongRow(
-                        title = song.name,
-                        subtitle = song.artists,
+                        title = song.name.ifBlank { "未知歌曲" },
+                        subtitle = song.lineSubtitle.ifBlank { "未知艺人" },
                         coverUrl = song.coverUrl,
                         transformation = SurfaceTransformation(spec),
                         modifier = Modifier.transformedHeight(this, spec),

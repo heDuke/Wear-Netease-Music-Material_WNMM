@@ -35,4 +35,15 @@ class NeteaseCryptoTest {
         val linux = NeteaseCrypto.linuxapi("""{"method":"POST"}""")
         assertTrue(linux.eparams.matches(Regex("[0-9A-F]+")))
     }
+
+    @Test
+    fun picUrlFromNumericId() {
+        val url = NeteaseCrypto.picUrl("109951163606011932")
+        assertTrue(url.startsWith("https://p1.music.126.net/"))
+        assertTrue(url.endsWith("/109951163606011932.jpg"))
+        val encoded = url.removePrefix("https://p1.music.126.net/").removeSuffix("/109951163606011932.jpg")
+        assertTrue(encoded.isNotBlank())
+        assertTrue('/' !in encoded)
+        assertTrue('+' !in encoded)
+    }
 }

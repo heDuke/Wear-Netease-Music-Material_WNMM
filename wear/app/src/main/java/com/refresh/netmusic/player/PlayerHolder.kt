@@ -28,11 +28,12 @@ object PlayerHolder {
         }
         val meta = player.mediaMetadata
         val id = player.currentMediaItem?.mediaId?.toLongOrNull() ?: return
+        val prev = _nowPlaying.value?.takeIf { it.id == id }
         _nowPlaying.value = NowPlaying(
             id = id,
-            title = meta.title?.toString().orEmpty(),
-            artist = meta.artist?.toString().orEmpty(),
-            coverUrl = meta.artworkUri?.toString().orEmpty(),
+            title = meta.title?.toString()?.ifBlank { null } ?: prev?.title?.ifBlank { null } ?: "歌曲 $id",
+            artist = meta.artist?.toString()?.ifBlank { null } ?: prev?.artist.orEmpty(),
+            coverUrl = meta.artworkUri?.toString()?.ifBlank { null } ?: prev?.coverUrl.orEmpty(),
             playing = player.isPlaying,
             error = error,
         )

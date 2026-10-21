@@ -73,11 +73,11 @@ fun HomeScreen(
                     transformation = SurfaceTransformation(spec),
                 ) { Text("每日推荐") }
             }
-            state.daily.take(10).forEachIndexed { index, song ->
+            state.daily.forEachIndexed { index, song ->
                 item(key = "daily-${song.id}") {
                     SongRow(
-                        title = song.name,
-                        subtitle = song.artists,
+                        title = song.name.ifBlank { "未知歌曲" },
+                        subtitle = song.lineSubtitle.ifBlank { "未知艺人" },
                         coverUrl = song.coverUrl,
                         transformation = SurfaceTransformation(spec),
                         modifier = Modifier.transformedHeight(this, spec),
@@ -96,7 +96,10 @@ fun HomeScreen(
                 item(key = "pl-${pl.id}") {
                     PlaylistCard(
                         name = pl.name,
-                        subtitle = "${pl.trackCount} 首",
+                        subtitle = listOfNotNull(
+                            pl.trackCount.takeIf { it > 0 }?.let { "$it 首" },
+                            pl.creator.takeIf { it.isNotBlank() },
+                        ).joinToString(" · ").ifBlank { "歌单" },
                         coverUrl = pl.coverUrl,
                         transformation = SurfaceTransformation(spec),
                         modifier = Modifier.transformedHeight(this, spec),

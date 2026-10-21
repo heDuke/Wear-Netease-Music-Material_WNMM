@@ -9,13 +9,16 @@ import com.refresh.netmusic.ncm.model.QrCheck
 import com.refresh.netmusic.ncm.model.QrCreate
 import com.refresh.netmusic.ncm.model.QrKey
 import com.refresh.netmusic.ncm.model.Song
+import com.refresh.netmusic.ncm.crypto.NeteaseCrypto
 import com.refresh.netmusic.ncm.model.SongUrl
 import com.refresh.netmusic.ncm.request.CryptoMode
 import com.refresh.netmusic.ncm.request.NeteaseRequest
 import com.refresh.netmusic.ncm.request.NeteaseResponse
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
@@ -163,33 +166,19 @@ class NeteaseApi(val request: NeteaseRequest = NeteaseRequest()) {
     }
 
     suspend fun songUrlV1(id: Long, level: String = "higher"): SongUrl {
-        val v1 = request.call(
-            "/api/song/enhance/player/url/v1",
-            mapOf("ids" to "[$id]", "level" to level, "encodeType" to "flac"),
-            CryptoMode.EAPI,
-        )
-        var item = v1.body.arr("data")?.firstOrNull()?.jsonObject
-        var url = item?.str("url")?.takeIf { it.isNotBlank() }
-        if (url == null) {
-            val br = when (level) {
-                "standard" -> 128000
-                "exhigh" -> 999000
-                else -> 320000
-            }
-            val legacy = request.call(
-                "/api/song/enhance/player/url",
-                mapOf("ids" to "[$id]", "br" to br),
-                CryptoMode.WEAPI,
-            )
-            item = legacy.body.arr("data")?.firstOrNull()?.jsonObject
-            url = item?.str("url")?.takeIf { it.isNotBlank() }
+        val wearLevel = when (level) {
+            "standard", "exhigh" -> level
+            else -> "higher"
         }
-        return SongUrl(
-            id = item?.long("id") ?: id,
-            url = url,
-            level = item?.str("level") ?: level,
-            trial = item?.obj("freeTrialInfo") != null,
-        )
+        val mp3 = fetchSongUrlV1(id, wearLevel, "mp3")
+        if (mp3.isWatchSafe()) return mp3
+        val aac = fetchSongUrlV1(id, wearLevel, "aac")
+        if (aac.isWatchSafe()) return aac
+        val br = if (wearLevel == "standard") 128000 else 320000
+        val legacy = fetchSongUrlLegacy(id, br)
+        return listOf(mp3, aac, legacy).firstOrNull { it.isWatchSafe() }
+            ?: listOf(mp3, aac, legacy).firstOrNull { !it.url.isNullOrBlank() }
+            ?: mp3.copy(message = mp3.message ?: emptyUrlMessage(mp3))
     }
 
     suspend fun lyricNew(id: Long): Lyrics {
@@ -209,7 +198,9 @@ class NeteaseApi(val request: NeteaseRequest = NeteaseRequest()) {
             CryptoMode.EAPI,
         )
         val lrc = res.body.obj("lrc")?.str("lyric").orEmpty()
-        return Lyrics(parseLrc(lrc), lrc)
+        val yrc = res.body.obj("yrc")?.str("lyric").orEmpty()
+        val lines = parseLrc(lrc).ifEmpty { parseYrc(yrc) }
+        return Lyrics(lines, lrc.ifBlank { yrc })
     }
 
     suspend fun like(id: Long, like: Boolean = true) {
@@ -243,22 +234,95 @@ class NeteaseApi(val request: NeteaseRequest = NeteaseRequest()) {
 
     fun close() = request.close()
 
+    private suspend fun fetchSongUrlV1(id: Long, level: String, encodeType: String): SongUrl {
+        val res = request.call(
+            "/api/song/enhance/player/url/v1",
+            mapOf("ids" to "[$id]", "level" to level, "encodeType" to encodeType),
+            CryptoMode.EAPI,
+        )
+        return parseSongUrl(res.body.arr("data")?.firstOrNull()?.jsonObject, id, level)
+    }
+
+    private suspend fun fetchSongUrlLegacy(id: Long, br: Int): SongUrl {
+        val res = request.call(
+            "/api/song/enhance/player/url",
+            mapOf("ids" to "[\"$id\"]", "br" to br),
+            CryptoMode.WEAPI,
+        )
+        return parseSongUrl(res.body.arr("data")?.firstOrNull()?.jsonObject, id, null)
+    }
+
+    private fun parseSongUrl(item: JsonObject?, id: Long, level: String?): SongUrl {
+        val url = item?.str("url")?.takeIf { it.isNotBlank() }
+        val code = item?.int("code") ?: if (url == null) 404 else 200
+        return SongUrl(
+            id = item?.long("id") ?: id,
+            url = url,
+            level = item?.str("level") ?: level,
+            type = item?.str("type") ?: item?.str("encodeType"),
+            trial = item?.obj("freeTrialInfo") != null,
+            code = code,
+            message = item?.str("exMsg") ?: item?.str("message"),
+        )
+    }
+
+    private fun SongUrl.isWatchSafe(): Boolean {
+        if (url.isNullOrBlank()) return false
+        val t = type?.lowercase().orEmpty()
+        return t !in LOSSLESS_TYPES
+    }
+
+    private fun emptyUrlMessage(url: SongUrl): String = when {
+        url.trial -> "仅试听，无法完整播放"
+        url.code == 404 -> "无版权或无法播放"
+        else -> "无法获取播放地址"
+    }
+
     private fun JsonElement.asSong(): Song? {
-        val o = runCatching { jsonObject }.getOrNull() ?: return null
+        var o = runCatching { jsonObject }.getOrNull() ?: return null
+        o.obj("song")?.let { o = it }
         val id = o.long("id") ?: return null
-        val artists = o.arr("ar") ?: o.arr("artists")
-        val artistNames = artists?.mapNotNull { it.jsonObject.str("name") }?.joinToString(" / ").orEmpty()
+        val artistNames = artistNames(o)
         val al = o.obj("al") ?: o.obj("album")
+        val name = o.str("name").orEmpty()
+        val extra = (o.arr("tns") ?: o.arr("alias") ?: o.arr("alia"))
+            ?.mapNotNull { it.asPlainName() }
+            ?.filter { it.isNotBlank() }
+            ?.joinToString(" / ")
+            .orEmpty()
+        val displayName = if (extra.isNotBlank() && extra != name) "$name ($extra)" else name
+        val cover = listOf(
+            al?.str("picUrl"),
+            o.str("picUrl"),
+            al?.str("blurPicUrl"),
+            o.str("albumPicUrl"),
+            al?.str("pic_str")?.let(NeteaseCrypto::picUrl),
+            al?.long("pic")?.takeIf { it != 0L }?.let { NeteaseCrypto.picUrl(it.toString()) },
+        ).firstOrNull { !it.isNullOrBlank() }.orEmpty()
         return Song(
             id = id,
-            name = o.str("name") ?: "",
+            name = displayName,
             artists = artistNames,
-            album = al?.str("name") ?: "",
+            album = al?.str("name").orEmpty(),
             albumId = al?.long("id") ?: 0,
-            coverUrl = al?.str("picUrl") ?: o.str("picUrl") ?: "",
+            coverUrl = cover,
             durationMs = o.long("dt") ?: o.long("duration") ?: 0,
             fee = o.int("fee") ?: 0,
         )
+    }
+
+    private fun artistNames(o: JsonObject): String {
+        val fromList = (o.arr("ar") ?: o.arr("artists"))
+            ?.mapNotNull { it.asPlainName() }
+            ?.filter { it.isNotBlank() }
+            .orEmpty()
+        if (fromList.isNotEmpty()) return fromList.joinToString(" / ")
+        return o.str("artist").orEmpty()
+    }
+
+    private fun JsonElement.asPlainName(): String? {
+        runCatching { jsonObject.str("name") }.getOrNull()?.let { return it }
+        return (this as? JsonPrimitive)?.contentOrNull
     }
 
     private fun JsonElement.asPlaylist(): Playlist? {
@@ -267,7 +331,12 @@ class NeteaseApi(val request: NeteaseRequest = NeteaseRequest()) {
         return Playlist(
             id = id,
             name = o.str("name") ?: "",
-            coverUrl = o.str("picUrl") ?: o.str("coverImgUrl") ?: "",
+            coverUrl = listOf(
+                o.str("picUrl"),
+                o.str("coverImgUrl"),
+                o.str("coverImgId_str")?.let(NeteaseCrypto::picUrl),
+                o.long("coverImgId")?.takeIf { it != 0L }?.let { NeteaseCrypto.picUrl(it.toString()) },
+            ).firstOrNull { !it.isNullOrBlank() }.orEmpty(),
             trackCount = o.int("trackCount") ?: 0,
             creator = o.obj("creator")?.str("nickname") ?: "",
             playCount = o.long("playCount") ?: 0,
@@ -288,25 +357,62 @@ class NeteaseApi(val request: NeteaseRequest = NeteaseRequest()) {
     }
 
     private fun parseLrc(raw: String): List<LyricLine> {
-        val regex = Regex("""\[(\d{2}):(\d{2})(?:\.(\d{2,3}))?\](.*)""")
-        return raw.lineSequence().mapNotNull { line ->
-            val m = regex.find(line.trim()) ?: return@mapNotNull null
-            val min = m.groupValues[1].toLong()
-            val sec = m.groupValues[2].toLong()
-            val msPart = m.groupValues[3]
-            val ms = when (msPart.length) {
-                2 -> msPart.toLong() * 10
-                3 -> msPart.toLong()
-                else -> 0
+        if (raw.isBlank()) return emptyList()
+        val tag = Regex("""\[(\d{2}):(\d{2})(?:[\.:](\d{2,3}))?\]""")
+        return raw.lineSequence().flatMap { line ->
+            val trimmed = line.trim()
+            val tags = tag.findAll(trimmed).toList()
+            if (tags.isEmpty()) return@flatMap emptyList()
+            val text = trimmed.substring(tags.last().range.last + 1).trim()
+            if (text.isBlank()) return@flatMap emptyList()
+            tags.map { m ->
+                val min = m.groupValues[1].toLong()
+                val sec = m.groupValues[2].toLong()
+                val msPart = m.groupValues[3]
+                val ms = when (msPart.length) {
+                    2 -> msPart.toLong() * 10
+                    3 -> msPart.toLong()
+                    else -> 0
+                }
+                LyricLine(min * 60_000 + sec * 1000 + ms, text)
             }
-            LyricLine(min * 60_000 + sec * 1000 + ms, m.groupValues[4].trim())
-        }.filter { it.text.isNotBlank() }.toList()
+        }.sortedBy { it.timeMs }.toList()
+    }
+
+    private fun parseYrc(raw: String): List<LyricLine> {
+        if (raw.isBlank()) return emptyList()
+        val wordTag = Regex("""\(\d+,\d+,\d+\)""")
+        val timed = Regex("""\[(\d+),\d+](.*)""")
+        return raw.lineSequence().mapNotNull { line ->
+            val trimmed = line.trim()
+            if (trimmed.startsWith("{")) {
+                runCatching {
+                    val o = lyricJson.parseToJsonElement(trimmed).jsonObject
+                    val t = o.long("t") ?: return@runCatching null
+                    val text = o.arr("c")?.joinToString("") { el ->
+                        el.jsonObject.str("tx").orEmpty()
+                    }.orEmpty()
+                    text.takeIf { it.isNotBlank() }?.let { LyricLine(t, it) }
+                }.getOrNull()
+            } else {
+                val m = timed.find(trimmed) ?: return@mapNotNull null
+                val text = wordTag.replace(m.groupValues[2], "").trim()
+                if (text.isBlank()) null else LyricLine(m.groupValues[1].toLong(), text)
+            }
+        }.sortedBy { it.timeMs }
+    }
+
+    companion object {
+        private val LOSSLESS_TYPES = setOf("flac", "ape", "wav", "alac", "dsf", "dff")
+        private val lyricJson = Json { ignoreUnknownKeys = true; isLenient = true }
     }
 }
 
 private fun JsonObject.obj(key: String): JsonObject? = this[key] as? JsonObject
 private fun JsonObject.arr(key: String): List<JsonElement>? = (this[key] as? JsonArray)?.toList()
-private fun JsonObject.str(key: String): String? = this[key]?.jsonPrimitive?.contentOrNull
-private fun JsonObject.int(key: String): Int? = this[key]?.jsonPrimitive?.intOrNull
-private fun JsonObject.long(key: String): Long? = this[key]?.jsonPrimitive?.longOrNull
-private fun JsonObject.bool(key: String): Boolean? = this[key]?.jsonPrimitive?.booleanOrNull
+private fun JsonObject.str(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull
+private fun JsonObject.int(key: String): Int? = (this[key] as? JsonPrimitive)?.intOrNull
+    ?: (this[key] as? JsonPrimitive)?.contentOrNull?.toIntOrNull()
+private fun JsonObject.long(key: String): Long? = (this[key] as? JsonPrimitive)?.longOrNull
+    ?: (this[key] as? JsonPrimitive)?.contentOrNull?.toLongOrNull()
+private fun JsonObject.bool(key: String): Boolean? = (this[key] as? JsonPrimitive)?.booleanOrNull

@@ -101,7 +101,11 @@ fun PlayerScreen(vm: PlayerViewModel = koinViewModel()) {
                                 item(key = "${item.id}-$index") {
                                     SongRow(
                                         title = item.title,
-                                        subtitle = if (index == state.queueIndex) "正在播放 · ${item.artist}" else item.artist,
+                                        subtitle = if (index == state.queueIndex) {
+                                            "正在播放 · ${item.artist.ifBlank { "未知艺人" }}"
+                                        } else {
+                                            item.artist.ifBlank { "未知艺人" }
+                                        },
                                         coverUrl = item.coverUrl,
                                         transformation = SurfaceTransformation(spec),
                                         modifier = Modifier.transformedHeight(this, spec),
@@ -173,26 +177,32 @@ private fun ControlsPage(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             state.title.ifBlank { "未播放" },
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.titleMedium,
                             textAlign = TextAlign.Center,
                         )
                         Text(
                             when {
-                                state.error != null -> state.error
                                 state.buffering -> "正在缓冲"
-                                else -> state.artist
+                                state.artist.isNotBlank() -> state.artist
+                                else -> "未知艺人"
                             },
-                            maxLines = 2,
+                            maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            color = if (state.error != null) {
-                                MaterialTheme.colorScheme.error
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
                         )
+                        if (state.error != null) {
+                            Text(
+                                state.error,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                color = MaterialTheme.colorScheme.error,
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
                     }
                 },
                 controlButtons = {

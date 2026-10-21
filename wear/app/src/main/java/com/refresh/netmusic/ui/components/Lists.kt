@@ -79,17 +79,34 @@ fun NowPlayingCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         transformation = transformation,
-        title = { Text(nowPlaying.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        subtitle = {
+        title = {
             Text(
-                if (nowPlaying.error != null) nowPlaying.error
-                else if (nowPlaying.playing) nowPlaying.artist
-                else "已暂停 · ${nowPlaying.artist}",
+                nowPlaying.title.ifBlank { "正在播放" },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         },
-    )
+        subtitle = {
+            val line = when {
+                nowPlaying.error != null && nowPlaying.artist.isNotBlank() ->
+                    "${nowPlaying.error} · ${nowPlaying.artist}"
+                nowPlaying.error != null -> nowPlaying.error
+                nowPlaying.playing -> nowPlaying.artist.ifBlank { "正在播放" }
+                nowPlaying.artist.isNotBlank() -> "已暂停 · ${nowPlaying.artist}"
+                else -> "已暂停"
+            }
+            Text(line, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        },
+    ) {
+        if (nowPlaying.coverUrl.isNotBlank()) {
+            AsyncImage(
+                model = nowPlaying.coverUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)),
+            )
+        }
+    }
 }
 
 @Composable

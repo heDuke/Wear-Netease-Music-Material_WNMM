@@ -60,21 +60,25 @@ class PlayerViewModel(
                             add(
                                 QueueItem(
                                     id = item.mediaId.toLongOrNull() ?: 0L,
-                                    title = m.title?.toString().orEmpty(),
-                                    artist = m.artist?.toString().orEmpty(),
+                                    title = m.title?.toString()?.ifBlank { null } ?: "歌曲 ${item.mediaId}",
+                                    artist = m.artist?.toString()?.ifBlank { null }
+                                        ?: m.albumTitle?.toString().orEmpty(),
                                     coverUrl = m.artworkUri?.toString().orEmpty(),
                                 ),
                             )
                         }
                     }
+                    val keep = _state.value.takeIf { it.songId == id }
                     _state.value = _state.value.copy(
                         songId = id,
-                        title = meta.title?.toString().orEmpty(),
-                        artist = meta.artist?.toString().orEmpty(),
-                        coverUrl = meta.artworkUri?.toString().orEmpty(),
+                        title = meta.title?.toString()?.ifBlank { null }
+                            ?: keep?.title?.ifBlank { null }
+                            ?: if (id == 0L) "" else "歌曲 $id",
+                        artist = meta.artist?.toString()?.ifBlank { null } ?: keep?.artist.orEmpty(),
+                        coverUrl = meta.artworkUri?.toString()?.ifBlank { null } ?: keep?.coverUrl.orEmpty(),
                         playing = exo.isPlaying,
                         position = exo.currentPosition.coerceAtLeast(0),
-                        duration = exo.duration.coerceAtLeast(0),
+                        duration = if (exo.duration > 0) exo.duration else keep?.duration ?: 0,
                         queue = queue,
                         queueIndex = exo.currentMediaItemIndex.coerceAtLeast(0),
                         error = PlayerHolder.nowPlaying.value?.error,
@@ -104,7 +108,17 @@ class PlayerViewModel(
                 val uid = session.uid()
                 if (uid == 0L) false else api.likelist(uid).contains(id)
             }.getOrDefault(false)
-            _state.value = _state.value.copy(lyrics = lyrics, comments = comments, liked = liked)
+            val detail = runCatching { api.songDetail(listOf(id)).firstOrNull() }.getOrNull()
+            val current = _state.value
+            if (current.songId != id) return@launch
+            _state.value = current.copy(
+                lyrics = lyrics,
+                comments = comments,
+                liked = liked,
+                title = current.title.ifBlank { detail?.name.orEmpty() },
+                artist = current.artist.ifBlank { detail?.artists.orEmpty() },
+                coverUrl = current.coverUrl.ifBlank { detail?.coverUrl.orEmpty() },
+            )
         }
     }
 

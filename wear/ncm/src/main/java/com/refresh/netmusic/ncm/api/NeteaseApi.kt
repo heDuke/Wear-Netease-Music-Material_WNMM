@@ -399,7 +399,7 @@ class NeteaseApi(val request: NeteaseRequest = NeteaseRequest()) {
                 val text = wordTag.replace(m.groupValues[2], "").trim()
                 if (text.isBlank()) null else LyricLine(m.groupValues[1].toLong(), text)
             }
-        }.sortedBy { it.timeMs }
+        }.sortedBy { it.timeMs }.toList()
     }
 
     companion object {

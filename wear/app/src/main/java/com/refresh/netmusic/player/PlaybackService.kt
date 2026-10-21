@@ -46,13 +46,12 @@ class PlaybackService : MediaSessionService() {
                     NotificationChannel(CHANNEL, "NetMusic", NotificationManager.IMPORTANCE_LOW),
                 )
         }
-        setMediaNotificationProvider(
-            DefaultMediaNotificationProvider.Builder(this)
-                .setChannelId(CHANNEL)
-                .setNotificationId(ONGOING_ID)
-                .setSmallIconResourceId(R.drawable.ic_stat_music)
-                .build(),
-        )
+        val notificationProvider = DefaultMediaNotificationProvider.Builder(this)
+            .setChannelId(CHANNEL)
+            .setNotificationId(ONGOING_ID)
+            .build()
+        notificationProvider.setSmallIcon(R.drawable.ic_stat_music)
+        setMediaNotificationProvider(notificationProvider)
         val http = DefaultHttpDataSource.Factory()
             .setUserAgent(MEDIA_UA)
             .setAllowCrossProtocolRedirects(true)

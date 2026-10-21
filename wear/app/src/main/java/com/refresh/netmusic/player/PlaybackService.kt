@@ -93,7 +93,10 @@ class PlaybackService : MediaSessionService() {
             val builder = dataSpec.buildUpon()
                 .setUri(Uri.parse(raw))
                 .setHttpRequestHeaders(headers)
-            mimeTypeOf(resolved.type)?.let { builder.setMimeType(it) }
+            val mime = mimeTypeOf(resolved.type)
+            if (mime != null) {
+                builder.setMimeType(mime)
+            }
             builder.build()
         }
         val renderers = DefaultRenderersFactory(this).setEnableDecoderFallback(true)

@@ -59,6 +59,7 @@ kotlin {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         optIn.add("com.google.android.horologist.annotations.ExperimentalHorologistApi")
         optIn.add("androidx.wear.compose.material3.ExperimentalWearMaterial3Api")
+        optIn.add("androidx.media3.common.util.UnstableApi")
     }
 }
 

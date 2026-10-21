@@ -99,9 +99,7 @@ class NeteaseRequest(
         cookies.applySetCookie(setCookies.map { it.substringBefore(';') })
 
         val text = response.bodyAsText()
-        val body = runCatching { json.parseToJsonElement(text).jsonObject }.getOrElse {
-            buildJsonObject { put("raw", text) }
-        }
+        val body = parseBody(text)
         val code = body["code"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: response.status.value
         val status = if (code in SPECIAL_OK) 200 else code
         return NeteaseResponse(status, body, setCookies)
@@ -145,6 +143,17 @@ class NeteaseRequest(
     private fun fullCookieHeader(): String {
         ensureBaseCookies()
         return cookies.asHeader()
+    }
+
+    private fun parseBody(text: String): JsonObject {
+        runCatching { return json.parseToJsonElement(text).jsonObject }
+        val trimmed = text.trim()
+        if (trimmed.isNotEmpty() && trimmed.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }) {
+            runCatching {
+                return json.parseToJsonElement(NeteaseCrypto.eapiDecrypt(trimmed)).jsonObject
+            }
+        }
+        return buildJsonObject { put("raw", text) }
     }
 
     private fun toJsonObject(map: Map<String, String>): JsonObject = buildJsonObject {

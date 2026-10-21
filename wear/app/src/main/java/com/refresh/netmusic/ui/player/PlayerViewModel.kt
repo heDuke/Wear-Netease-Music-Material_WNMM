@@ -33,6 +33,8 @@ data class PlayerUi(
     val liked: Boolean = false,
     val queue: List<QueueItem> = emptyList(),
     val queueIndex: Int = 0,
+    val error: String? = null,
+    val buffering: Boolean = false,
 )
 
 class PlayerViewModel(
@@ -75,8 +77,9 @@ class PlayerViewModel(
                         duration = exo.duration.coerceAtLeast(0),
                         queue = queue,
                         queueIndex = exo.currentMediaItemIndex.coerceAtLeast(0),
+                        error = PlayerHolder.nowPlaying.value?.error,
+                        buffering = exo.playbackState == Player.STATE_BUFFERING,
                     )
-                    PlayerHolder.updateFrom(exo)
                     if (id != 0L && id != lastId) {
                         lastId = id
                         loadExtras(id)

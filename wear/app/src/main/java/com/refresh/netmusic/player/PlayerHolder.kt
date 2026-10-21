@@ -11,6 +11,7 @@ data class NowPlaying(
     val artist: String,
     val coverUrl: String,
     val playing: Boolean,
+    val error: String? = null,
 )
 
 object PlayerHolder {
@@ -20,7 +21,7 @@ object PlayerHolder {
     private val _nowPlaying = MutableStateFlow<NowPlaying?>(null)
     val nowPlaying: StateFlow<NowPlaying?> = _nowPlaying.asStateFlow()
 
-    fun updateFrom(player: Player?) {
+    fun updateFrom(player: Player?, error: String? = _nowPlaying.value?.error) {
         if (player == null) {
             _nowPlaying.value = null
             return
@@ -33,6 +34,14 @@ object PlayerHolder {
             artist = meta.artist?.toString().orEmpty(),
             coverUrl = meta.artworkUri?.toString().orEmpty(),
             playing = player.isPlaying,
+            error = error,
         )
+    }
+
+    fun setError(message: String?) {
+        val current = _nowPlaying.value
+        if (current != null) {
+            _nowPlaying.value = current.copy(error = message)
+        }
     }
 }

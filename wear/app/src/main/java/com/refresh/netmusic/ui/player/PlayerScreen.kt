@@ -1,11 +1,9 @@
 package com.refresh.netmusic.ui.player
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -23,7 +21,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
@@ -41,6 +38,7 @@ import androidx.wear.compose.material3.PagerScaffoldDefaults
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.SurfaceTransformation
 import androidx.wear.compose.material3.Text
+import androidx.wear.compose.material3.TitleCard
 import androidx.wear.compose.material3.lazy.transformedHeight
 import coil3.compose.AsyncImage
 import com.google.android.horologist.audio.ui.VolumeViewModel
@@ -102,8 +100,8 @@ fun PlayerScreen(vm: PlayerViewModel = koinViewModel()) {
                             state.queue.forEachIndexed { index, item ->
                                 item(key = "${item.id}-$index") {
                                     SongRow(
-                                        title = if (index == state.queueIndex) "▶ ${item.title}" else item.title,
-                                        subtitle = item.artist,
+                                        title = item.title,
+                                        subtitle = if (index == state.queueIndex) "正在播放 · ${item.artist}" else item.artist,
                                         coverUrl = item.coverUrl,
                                         transformation = SurfaceTransformation(spec),
                                         modifier = Modifier.transformedHeight(this, spec),
@@ -118,13 +116,12 @@ fun PlayerScreen(vm: PlayerViewModel = koinViewModel()) {
                         } else {
                             state.comments.forEach { c ->
                                 item(key = c.id) {
-                                    SongRow(
-                                        title = c.nickname,
-                                        subtitle = c.content,
-                                        coverUrl = c.avatarUrl,
-                                        transformation = SurfaceTransformation(spec),
-                                        modifier = Modifier.transformedHeight(this, spec),
+                                    TitleCard(
                                         onClick = {},
+                                        modifier = Modifier.fillMaxWidth().transformedHeight(this, spec),
+                                        transformation = SurfaceTransformation(spec),
+                                        title = { Text(c.nickname, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                        subtitle = { Text(c.content, maxLines = 4, overflow = TextOverflow.Ellipsis) },
                                     )
                                 }
                             }
@@ -182,10 +179,18 @@ private fun ControlsPage(
                             textAlign = TextAlign.Center,
                         )
                         Text(
-                            state.artist,
-                            maxLines = 1,
+                            when {
+                                state.error != null -> state.error
+                                state.buffering -> "正在缓冲"
+                                else -> state.artist
+                            },
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (state.error != null) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                             textAlign = TextAlign.Center,
                         )
                     }
@@ -237,19 +242,33 @@ private fun ControlsPage(
 
 @Composable
 private fun LyricsPage(state: PlayerUi) {
-    val line = state.lyrics.lines.lastOrNull { it.timeMs <= state.position }?.text ?: "暂无歌词"
-    ScreenScaffold {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                line,
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.fillMaxWidth(),
-            )
+    val lines = state.lyrics.lines
+    val currentIndex = lines.indexOfLast { it.timeMs <= state.position }
+    WearListScreen(title = "歌词") { spec ->
+        if (lines.isEmpty()) {
+            item { MessageItem("暂无歌词") }
+        } else {
+            lines.forEachIndexed { index, line ->
+                item(key = "$index-${line.timeMs}") {
+                    Text(
+                        line.text,
+                        modifier = Modifier.fillMaxWidth().transformedHeight(this, spec),
+                        textAlign = TextAlign.Center,
+                        style = if (index == currentIndex) {
+                            MaterialTheme.typography.titleMedium
+                        } else {
+                            MaterialTheme.typography.bodyMedium
+                        },
+                        color = if (index == currentIndex) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
     }
 }

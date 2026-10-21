@@ -163,15 +163,30 @@ class NeteaseApi(val request: NeteaseRequest = NeteaseRequest()) {
     }
 
     suspend fun songUrlV1(id: Long, level: String = "higher"): SongUrl {
-        val res = request.call(
+        val v1 = request.call(
             "/api/song/enhance/player/url/v1",
-            mapOf("ids" to "[$id]", "level" to level, "encodeType" to "aac"),
+            mapOf("ids" to "[$id]", "level" to level, "encodeType" to "flac"),
             CryptoMode.EAPI,
         )
-        val item = res.body.arr("data")?.firstOrNull()?.jsonObject
+        var item = v1.body.arr("data")?.firstOrNull()?.jsonObject
+        var url = item?.str("url")?.takeIf { it.isNotBlank() }
+        if (url == null) {
+            val br = when (level) {
+                "standard" -> 128000
+                "exhigh" -> 999000
+                else -> 320000
+            }
+            val legacy = request.call(
+                "/api/song/enhance/player/url",
+                mapOf("ids" to "[$id]", "br" to br),
+                CryptoMode.WEAPI,
+            )
+            item = legacy.body.arr("data")?.firstOrNull()?.jsonObject
+            url = item?.str("url")?.takeIf { it.isNotBlank() }
+        }
         return SongUrl(
             id = item?.long("id") ?: id,
-            url = item?.str("url"),
+            url = url,
             level = item?.str("level") ?: level,
             trial = item?.obj("freeTrialInfo") != null,
         )

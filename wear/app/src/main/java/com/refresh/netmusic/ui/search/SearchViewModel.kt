@@ -13,6 +13,7 @@ data class SearchState(
     val hots: List<String> = emptyList(),
     val results: List<Song> = emptyList(),
     val loading: Boolean = false,
+    val error: String? = null,
 )
 
 class SearchViewModel(private val api: NeteaseApi) : ViewModel() {
@@ -27,10 +28,15 @@ class SearchViewModel(private val api: NeteaseApi) : ViewModel() {
     }
 
     fun search(q: String) {
-        _state.value = _state.value.copy(query = q, loading = true)
+        _state.value = _state.value.copy(query = q, loading = true, error = null)
         viewModelScope.launch {
-            val songs = runCatching { api.cloudsearch(q) }.getOrDefault(emptyList())
-            _state.value = _state.value.copy(results = songs, loading = false)
+            runCatching { api.cloudsearch(q) }
+                .onSuccess { songs ->
+                    _state.value = _state.value.copy(results = songs, loading = false, error = null)
+                }
+                .onFailure {
+                    _state.value = _state.value.copy(loading = false, error = it.message ?: "搜索失败")
+                }
         }
     }
 }

@@ -20,6 +20,7 @@ import androidx.wear.compose.foundation.lazy.TransformingLazyColumnScope
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.CircularProgressIndicator
+import androidx.wear.compose.material3.FilledTonalButton
 import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.SurfaceTransformation
@@ -29,12 +30,11 @@ import androidx.wear.compose.material3.lazy.TransformationSpec
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import coil3.compose.AsyncImage
+import com.refresh.netmusic.player.NowPlaying
 
 @Composable
 fun WearListScreen(
     title: String,
-    isRefreshing: Boolean = false,
-    onRefresh: (() -> Unit)? = null,
     edgeButton: (@Composable BoxScope.() -> Unit)? = null,
     content: TransformingLazyColumnScope.(spec: TransformationSpec) -> Unit,
 ) {
@@ -54,16 +54,6 @@ fun WearListScreen(
                     Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
-            if (onRefresh != null) {
-                item {
-                    Button(
-                        onClick = onRefresh,
-                        modifier = Modifier.fillMaxWidth().transformedHeight(this, spec),
-                        transformation = SurfaceTransformation(spec),
-                        label = { Text(if (isRefreshing) "刷新中" else "刷新") },
-                    )
-                }
-            }
             content(spec)
         }
     }
@@ -76,6 +66,30 @@ fun WearListScreen(
             body(padding)
         }
     }
+}
+
+@Composable
+fun NowPlayingCard(
+    nowPlaying: NowPlaying,
+    transformation: SurfaceTransformation? = null,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    TitleCard(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        transformation = transformation,
+        title = { Text(nowPlaying.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        subtitle = {
+            Text(
+                if (nowPlaying.error != null) nowPlaying.error
+                else if (nowPlaying.playing) nowPlaying.artist
+                else "已暂停 · ${nowPlaying.artist}",
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+    )
 }
 
 @Composable
@@ -143,6 +157,15 @@ fun LoadingItem() {
 }
 
 @Composable
-fun MessageItem(text: String) {
-    Text(text, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, maxLines = 3)
+fun MessageItem(text: String, onRetry: (() -> Unit)? = null) {
+    if (onRetry != null) {
+        FilledTonalButton(
+            onClick = onRetry,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(text, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+            secondaryLabel = { Text("点按重试") },
+        )
+    } else {
+        Text(text, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, maxLines = 3)
+    }
 }

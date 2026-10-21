@@ -6,10 +6,8 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.wear.compose.material3.Button
-import androidx.wear.compose.material3.EdgeButton
 import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.SurfaceTransformation
 import androidx.wear.compose.material3.Text
@@ -18,6 +16,7 @@ import com.refresh.netmusic.ncm.model.Playlist
 import com.refresh.netmusic.player.PlayerHolder
 import com.refresh.netmusic.ui.components.LoadingItem
 import com.refresh.netmusic.ui.components.MessageItem
+import com.refresh.netmusic.ui.components.NowPlayingCard
 import com.refresh.netmusic.ui.components.PlaylistCard
 import com.refresh.netmusic.ui.components.WearListScreen
 import org.koin.androidx.compose.koinViewModel
@@ -31,18 +30,17 @@ fun LibraryScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val nowPlaying by PlayerHolder.nowPlaying.collectAsStateWithLifecycle()
-    WearListScreen(
-        title = state.profile?.nickname?.ifBlank { "我的" } ?: "我的",
-        isRefreshing = state.loading,
-        onRefresh = vm::refresh,
-        edgeButton = nowPlaying?.let { np ->
-            {
-                EdgeButton(onClick = onNowPlaying) {
-                    Text(np.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
+    WearListScreen(title = state.profile?.nickname?.ifBlank { "我的" } ?: "我的") { spec ->
+        nowPlaying?.let { np ->
+            item(key = "now-playing") {
+                NowPlayingCard(
+                    nowPlaying = np,
+                    transformation = SurfaceTransformation(spec),
+                    modifier = Modifier.transformedHeight(this, spec),
+                    onClick = onNowPlaying,
+                )
             }
-        },
-    ) { spec ->
+        }
         item {
             Button(
                 onClick = onSettings,
@@ -56,7 +54,7 @@ fun LibraryScreen(
             item { LoadingItem() }
         }
         if (state.error != null) {
-            item { MessageItem(state.error.orEmpty()) }
+            item { MessageItem(state.error.orEmpty(), onRetry = vm::refresh) }
         }
         state.playlists.forEach { pl ->
             item(key = pl.id) {

@@ -5,12 +5,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import androidx.wear.compose.material3.AppScaffold
 import androidx.wear.compose.navigation3.rememberSwipeDismissableSceneStrategy
+import com.refresh.netmusic.data.SessionStore
+import com.refresh.netmusic.ncm.api.NeteaseApi
 import com.refresh.netmusic.ncm.model.Song
 import com.refresh.netmusic.nav.Route
 import com.refresh.netmusic.player.PlaybackService
@@ -22,6 +25,7 @@ import com.refresh.netmusic.ui.playlist.PlaylistScreen
 import com.refresh.netmusic.ui.search.SearchScreen
 import com.refresh.netmusic.ui.settings.SettingsScreen
 import com.refresh.netmusic.ui.theme.NetMusicTheme
+import org.koin.compose.koinInject
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,11 +43,19 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun NetMusicNav() {
-    val backStack = rememberNavBackStack(Route.Login)
+    val context = LocalContext.current
+    val api: NeteaseApi = koinInject()
+    val session: SessionStore = koinInject()
+    val start = if (api.request.cookies.hasLogin() || session.loadCookies().containsKey("MUSIC_U")) {
+        Route.Home
+    } else {
+        Route.Login
+    }
+    val backStack = rememberNavBackStack(start)
     val strategy = rememberSwipeDismissableSceneStrategy<NavKey>()
 
     fun play(songs: List<Song>, index: Int) {
-        PlaybackService.instance?.playSongs(songs, index)
+        PlaybackService.play(context, songs, index)
         if (backStack.lastOrNull() != Route.Player) backStack.add(Route.Player)
     }
 

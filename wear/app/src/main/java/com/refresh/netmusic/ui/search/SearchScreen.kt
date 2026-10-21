@@ -4,15 +4,13 @@ import android.app.RemoteInput
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.EdgeButton
-import androidx.wear.compose.material3.Icon
+import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.SurfaceTransformation
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.lazy.transformedHeight
@@ -53,27 +51,37 @@ fun SearchScreen(
 
     WearListScreen(
         title = state.query.ifBlank { "搜索" },
-        isRefreshing = state.loading,
-        onRefresh = { if (state.query.isNotBlank()) vm.search(state.query) },
         edgeButton = {
             EdgeButton(onClick = ::launchInput) {
                 Text("输入")
             }
         },
     ) { spec ->
-        item {
-            Button(
-                onClick = ::launchInput,
-                modifier = Modifier.fillMaxWidth().transformedHeight(this, spec),
-                transformation = SurfaceTransformation(spec),
-                icon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-                label = { Text("用表盘输入搜索") },
-            )
-        }
         if (state.loading) {
             item { LoadingItem() }
         }
-        if (state.results.isEmpty() && !state.loading) {
+        if (state.error != null) {
+            item { MessageItem(state.error.orEmpty(), onRetry = { if (state.query.isNotBlank()) vm.search(state.query) }) }
+        }
+        if (state.results.isNotEmpty()) {
+            state.results.forEachIndexed { index, song ->
+                item(key = "song-${song.id}") {
+                    SongRow(
+                        title = song.name,
+                        subtitle = song.artists,
+                        coverUrl = song.coverUrl,
+                        transformation = SurfaceTransformation(spec),
+                        modifier = Modifier.transformedHeight(this, spec),
+                    ) { onPlay(state.results, index) }
+                }
+            }
+        } else if (!state.loading) {
+            item {
+                ListHeader(
+                    modifier = Modifier.fillMaxWidth().transformedHeight(this, spec),
+                    transformation = SurfaceTransformation(spec),
+                ) { Text("热搜") }
+            }
             if (state.hots.isEmpty()) {
                 item { MessageItem("热搜加载中") }
             } else {
@@ -86,18 +94,6 @@ fun SearchScreen(
                             label = { Text(hot) },
                         )
                     }
-                }
-            }
-        } else {
-            state.results.forEachIndexed { index, song ->
-                item(key = song.id) {
-                    SongRow(
-                        title = song.name,
-                        subtitle = song.artists,
-                        coverUrl = song.coverUrl,
-                        transformation = SurfaceTransformation(spec),
-                        modifier = Modifier.transformedHeight(this, spec),
-                    ) { onPlay(state.results, index) }
                 }
             }
         }

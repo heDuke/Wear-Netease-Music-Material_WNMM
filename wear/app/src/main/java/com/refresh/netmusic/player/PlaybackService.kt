@@ -11,7 +11,6 @@ import androidx.core.app.NotificationCompat
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionParameters
@@ -90,14 +89,10 @@ class PlaybackService : MediaSessionService() {
                 put("Origin", "https://music.163.com")
                 if (cookie.isNotBlank()) put("Cookie", cookie)
             }
-            val builder = dataSpec.buildUpon()
+            dataSpec.buildUpon()
                 .setUri(Uri.parse(raw))
                 .setHttpRequestHeaders(headers)
-            val mime = mimeTypeOf(resolved.type)
-            if (mime != null) {
-                builder.setMimeType(mime)
-            }
-            builder.build()
+                .build()
         }
         val renderers = DefaultRenderersFactory(this).setEnableDecoderFallback(true)
         val exo = ExoPlayer.Builder(this, renderers)
@@ -290,16 +285,6 @@ class PlaybackService : MediaSessionService() {
             PlaybackException.ERROR_CODE_DECODING_FAILED,
             PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
         )
-
-        private fun mimeTypeOf(type: String?): String? = when (type?.lowercase()) {
-            "mp3", "mpeg" -> MimeTypes.AUDIO_MPEG
-            "aac" -> MimeTypes.AUDIO_AAC
-            "m4a", "mp4" -> MimeTypes.AUDIO_MP4
-            "ogg", "oga" -> MimeTypes.AUDIO_OGG
-            "wav" -> MimeTypes.AUDIO_WAV
-            "flac" -> MimeTypes.AUDIO_FLAC
-            else -> null
-        }
 
         private fun friendlyError(error: PlaybackException): String {
             val cause = error.cause?.message.orEmpty()
